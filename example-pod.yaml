@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: controller-demo
+spec:
+  containers:
+  - name: example
+    image: busybox
+    command: ["/bin/sh"]
+    args: ["-c", sleep 60"]
