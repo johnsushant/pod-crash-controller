@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ashwanthkumar/slack-go-webhook"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -22,8 +24,29 @@ import (
 
 var restartList map[string]int32
 
-func slackNotification(message string) {
-	println(message)
+type SlackRequestBody struct {
+	Text string `json:"text"`
+}
+
+func slackNotification(podName *v1.Pod, container string, restartCount int32) {
+	webhookURL := "https://hooks.slack.com/services/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"
+
+	attachment1 := slack.Attachment{}
+	attachment1.AddField(slack.Field{Title: "Pod Name", Value: podName.Name}).AddField(slack.Field{Title: "Container Name", Value: container})
+	attachment1.AddField(slack.Field{Title: "Restarted", Value: "true"})
+	attachment1.AddAction(slack.Action{Type: "button", Text: "Open Jira 🛫", Url: "", Style: "primary"})
+	attachment1.AddAction(slack.Action{Type: "button", Text: "Cancel", Url: "", Style: "danger"})
+	payload := slack.Payload{
+		Text:        "Pod Crash Notification Alert",
+		Username:    "Kube Bot",
+		Channel:     "#kubernetes-demo",
+		IconEmoji:   ":monkey_face:",
+		Attachments: []slack.Attachment{attachment1},
+	}
+	err := slack.Send(webhookURL, "", payload)
+	if len(err) > 0 {
+		fmt.Printf("error: %s\n", err)
+	}
 }
 
 type ReconcilePod struct {
@@ -50,7 +73,8 @@ func (r *ReconcilePod) Reconcile(request reconcile.Request) (reconcile.Result, e
 		if _, ok := restartList[identifier]; !ok {
 			restartList[identifier] = restartCount
 		} else if restartList[identifier] < restartCount {
-			slackNotification(fmt.Sprintf("%s container of %s pod restarted. Total restart count: %d", container, pod.Name, restartCount))
+			log.Info("Reconciling container: " + container)
+			slackNotification(pod, container, restartCount)
 			restartList[identifier] = restartCount
 		}
 	}

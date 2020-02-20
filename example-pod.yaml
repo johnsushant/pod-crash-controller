@@ -8,4 +8,4 @@ spec:
   - name: example
     image: busybox
     command: ["/bin/sh"]
-    args: ["-c", sleep 60"]
+    args: ["-c", "sleep 60"]
